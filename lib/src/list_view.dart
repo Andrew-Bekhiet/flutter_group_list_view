@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import 'index_path.dart';
 import 'list_item.dart';
@@ -156,7 +157,7 @@ class GroupListView extends StatelessWidget {
   final bool shrinkWrap;
 
   /// The amount of space by which to inset the children.
-  final EdgeInsetsGeometry? padding;
+  final EdgeInsets? padding;
 
   /// If non-null, forces the children to have the given extent in the scroll
   /// direction.
@@ -226,7 +227,26 @@ class GroupListView extends StatelessWidget {
   final int? semanticChildCount;
 
   /// {@macro flutter.widgets.scrollable.dragStartBehavior}
-  final DragStartBehavior dragStartBehavior;
+  final DragStartBehavior? dragStartBehavior;
+
+  /// {@macro flutter.material.Material.clipBehavior}
+  final Clip? clipBehavior;
+
+  /// {@macro flutter.widgets.scrollable.findChildIndexCallback}
+  final int? Function(Key)? findChildIndexCallback;
+
+  /// {@macro flutter.widgets.scrollable.keyboardDismissBehavior}
+  final ScrollViewKeyboardDismissBehavior? keyboardDismissBehavior;
+
+  /// {@macro flutter.widgets.scrollable.restorationId}
+  final String? restorationId;
+
+  final bool _positioned;
+
+  final ItemPositionsListener? itemPositionsListener;
+  final int? initialScrollIndex;
+  final ItemScrollController? itemScrollController;
+  final double? minCacheExtent;
 
   const GroupListView({
     Key? key,
@@ -249,8 +269,51 @@ class GroupListView extends StatelessWidget {
     this.addSemanticIndexes = true,
     this.cacheExtent,
     this.semanticChildCount,
-    this.dragStartBehavior = DragStartBehavior.start,
-  }) : super(key: key);
+    DragStartBehavior this.dragStartBehavior = DragStartBehavior.start,
+    this.findChildIndexCallback,
+    Clip this.clipBehavior = Clip.hardEdge,
+    ScrollViewKeyboardDismissBehavior this.keyboardDismissBehavior =
+        ScrollViewKeyboardDismissBehavior.manual,
+    this.restorationId,
+  })  : _positioned = false,
+        itemPositionsListener = null,
+        initialScrollIndex = null,
+        itemScrollController = null,
+        minCacheExtent = null,
+        super(key: key);
+
+  const GroupListView.positioned({
+    Key? key,
+    required this.itemBuilder,
+    required this.sectionsCount,
+    required this.groupHeaderBuilder,
+    required this.countOfItemInSection,
+    this.separatorBuilder,
+    this.sectionSeparatorBuilder,
+    this.scrollDirection = Axis.vertical,
+    this.reverse = false,
+    this.physics,
+    this.shrinkWrap = false,
+    this.padding,
+    this.addAutomaticKeepAlives = true,
+    this.addRepaintBoundaries = true,
+    this.addSemanticIndexes = true,
+    this.semanticChildCount,
+    this.itemPositionsListener,
+    this.initialScrollIndex,
+    this.itemScrollController,
+    this.minCacheExtent,
+  })  : _positioned = true,
+        controller = null,
+        primary = null,
+        itemExtent = null,
+        cacheExtent = null,
+        dragStartBehavior = null,
+        clipBehavior = null,
+        findChildIndexCallback = null,
+        keyboardDismissBehavior = null,
+        restorationId = null,
+        super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -279,6 +342,40 @@ class GroupListView extends StatelessWidget {
       ]
     ];
 
+    Widget _itemBuilder(BuildContext context, int index) {
+      final ListItem listItem = _indexToIndexPathList[index];
+      final IndexPath indexPath = listItem.indexPath;
+
+      if (listItem.type.isSection) {
+        return groupHeaderBuilder(context, indexPath.section);
+      } else if (listItem.type.isSectionSeparator) {
+        return sectionSeparatorBuilder!(context, indexPath.section);
+      } else if (listItem.type.isItemSeparator) {
+        return separatorBuilder!(context, indexPath);
+      }
+      return itemBuilder(context, indexPath);
+    }
+
+    if (_positioned) {
+      return ScrollablePositionedList.builder(
+        scrollDirection: scrollDirection,
+        reverse: reverse,
+        itemPositionsListener: itemPositionsListener,
+        initialScrollIndex: initialScrollIndex ?? 0,
+        itemScrollController: itemScrollController,
+        minCacheExtent: minCacheExtent,
+        physics: physics,
+        shrinkWrap: shrinkWrap,
+        padding: padding,
+        addAutomaticKeepAlives: addAutomaticKeepAlives,
+        addRepaintBoundaries: addRepaintBoundaries,
+        addSemanticIndexes: addSemanticIndexes,
+        semanticChildCount: semanticChildCount,
+        itemCount: _indexToIndexPathList.length,
+        itemBuilder: _itemBuilder,
+      );
+    }
+
     return ListView.builder(
       scrollDirection: scrollDirection,
       reverse: reverse,
@@ -293,21 +390,13 @@ class GroupListView extends StatelessWidget {
       addSemanticIndexes: addSemanticIndexes,
       cacheExtent: cacheExtent,
       semanticChildCount: semanticChildCount,
-      dragStartBehavior: dragStartBehavior,
+      dragStartBehavior: dragStartBehavior!,
+      clipBehavior: clipBehavior!,
+      findChildIndexCallback: findChildIndexCallback,
+      keyboardDismissBehavior: keyboardDismissBehavior!,
+      restorationId: restorationId,
       itemCount: _indexToIndexPathList.length,
-      itemBuilder: (context, index) {
-        final ListItem listItem = _indexToIndexPathList[index];
-        final IndexPath indexPath = listItem.indexPath;
-
-        if (listItem.type.isSection) {
-          return groupHeaderBuilder(context, indexPath.section);
-        } else if (listItem.type.isSectionSeparator) {
-          return sectionSeparatorBuilder!(context, indexPath.section);
-        } else if (listItem.type.isItemSeparator) {
-          return separatorBuilder!(context, indexPath);
-        }
-        return itemBuilder(context, indexPath);
-      },
+      itemBuilder: _itemBuilder,
     );
   }
 }
