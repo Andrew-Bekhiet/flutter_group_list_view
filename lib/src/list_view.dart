@@ -23,7 +23,7 @@ typedef SectionWidgetBuilder = Widget Function(
   int section,
 );
 
-class GroupListView extends StatefulWidget {
+class GroupListView extends StatelessWidget {
   ///The number of sections in the ListView.
   final int sectionsCount;
 
@@ -197,7 +197,7 @@ class GroupListView extends StatefulWidget {
   /// Typically, children in a scrolling container must be annotated with a
   /// semantic index in order to generate the correct accessibility
   /// announcements. This should only be set to false if the indexes have
-  /// already been provided by an [IndexedChildSemantics] widget.
+  /// already been provided by an [IndexedChildSemantics]
   ///
   /// Defaults to true.
   ///
@@ -253,92 +253,61 @@ class GroupListView extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _GroupListViewState createState() => _GroupListViewState();
-}
-
-class _GroupListViewState extends State<GroupListView> {
-  late List<ListItem> _indexToIndexPathList;
-
-  @override
-  void initState() {
-    _indexToIndexPathList = [];
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    _calculateIndexPath();
-    return ListView.builder(
-      scrollDirection: widget.scrollDirection,
-      reverse: widget.reverse,
-      controller: widget.controller,
-      primary: widget.primary,
-      physics: widget.physics,
-      shrinkWrap: widget.shrinkWrap,
-      padding: widget.padding,
-      itemExtent: widget.itemExtent,
-      addAutomaticKeepAlives: widget.addAutomaticKeepAlives,
-      addRepaintBoundaries: widget.addRepaintBoundaries,
-      addSemanticIndexes: widget.addSemanticIndexes,
-      cacheExtent: widget.cacheExtent,
-      semanticChildCount: widget.semanticChildCount,
-      dragStartBehavior: widget.dragStartBehavior,
-      itemCount: _indexToIndexPathList.length,
-      itemBuilder: _itemBuilder,
-    );
-  }
-
-  void _calculateIndexPath() {
-    _indexToIndexPathList = [];
-    ListItem listItem;
-    for (int section = 0; section < widget.sectionsCount; section++) {
-      //Add section
-      listItem = ListItem(
-        indexPath: IndexPath(section: section, index: 0),
-        type: ListItemType.section,
-      );
-      _indexToIndexPathList.add(listItem);
-
-      final int rows = widget.countOfItemInSection(section);
-      for (int index = 0; index < rows; index++) {
-        //Add item
-        listItem = ListItem(
-          indexPath: IndexPath(section: section, index: index),
-          type: ListItemType.item,
-        );
-        _indexToIndexPathList.add(listItem);
-
-        //Add separator
-        if (widget.separatorBuilder != null) {
-          listItem = ListItem(
-            indexPath: IndexPath(section: section, index: index),
-            type: ListItemType.itemSeparator,
-          );
-          _indexToIndexPathList.add(listItem);
-        }
-      }
-
-      //Add section separator
-      if (widget.sectionSeparatorBuilder != null) {
-        listItem = ListItem(
+    final _indexToIndexPathList = <ListItem>[
+      for (int section = 0; section < sectionsCount; section++) ...[
+        ListItem(
           indexPath: IndexPath(section: section, index: 0),
-          type: ListItemType.sectionSeparator,
-        );
-        _indexToIndexPathList.add(listItem);
-      }
-    }
-  }
+          type: ListItemType.section,
+        ),
+        for (int index = 0; index < countOfItemInSection(section); index++) ...[
+          ListItem(
+            indexPath: IndexPath(section: section, index: index),
+            type: ListItemType.item,
+          ),
+          if (separatorBuilder != null)
+            ListItem(
+              indexPath: IndexPath(section: section, index: index),
+              type: ListItemType.itemSeparator,
+            ),
+          if (sectionSeparatorBuilder != null)
+            ListItem(
+              indexPath: IndexPath(section: section, index: 0),
+              type: ListItemType.sectionSeparator,
+            ),
+        ]
+      ]
+    ];
 
-  Widget _itemBuilder(BuildContext context, int index) {
-    final ListItem listItem = _indexToIndexPathList[index];
-    final IndexPath indexPath = listItem.indexPath;
-    if (listItem.type.isSection) {
-      return widget.groupHeaderBuilder(context, indexPath.section);
-    } else if (listItem.type.isSectionSeparator) {
-      return widget.sectionSeparatorBuilder!(context, indexPath.section);
-    } else if (listItem.type.isItemSeparator) {
-      return widget.separatorBuilder!(context, indexPath);
-    }
-    return widget.itemBuilder(context, indexPath);
+    return ListView.builder(
+      scrollDirection: scrollDirection,
+      reverse: reverse,
+      controller: controller,
+      primary: primary,
+      physics: physics,
+      shrinkWrap: shrinkWrap,
+      padding: padding,
+      itemExtent: itemExtent,
+      addAutomaticKeepAlives: addAutomaticKeepAlives,
+      addRepaintBoundaries: addRepaintBoundaries,
+      addSemanticIndexes: addSemanticIndexes,
+      cacheExtent: cacheExtent,
+      semanticChildCount: semanticChildCount,
+      dragStartBehavior: dragStartBehavior,
+      itemCount: _indexToIndexPathList.length,
+      itemBuilder: (context, index) {
+        final ListItem listItem = _indexToIndexPathList[index];
+        final IndexPath indexPath = listItem.indexPath;
+
+        if (listItem.type.isSection) {
+          return groupHeaderBuilder(context, indexPath.section);
+        } else if (listItem.type.isSectionSeparator) {
+          return sectionSeparatorBuilder!(context, indexPath.section);
+        } else if (listItem.type.isItemSeparator) {
+          return separatorBuilder!(context, indexPath);
+        }
+        return itemBuilder(context, indexPath);
+      },
+    );
   }
 }
